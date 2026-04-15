@@ -1,0 +1,6 @@
+livekit-agents~=1.4
+livekit-plugins-sarvam~=1.4
+livekit-plugins-groq~=1.4
+livekit-plugins-silero~=1.4
+livekit-plugins-noise-cancellation~=1.4
+python-dotenv>=1.0.0
