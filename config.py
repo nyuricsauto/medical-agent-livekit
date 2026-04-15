@@ -91,7 +91,7 @@ STT_LANGUAGE = "en-IN"  # Indian English
 STT_MODEL = "saaras:v3"
 
 # Groq LLM settings
-LLM_MODEL = "llama-3.3-70b-versatile"
+LLM_MODEL = "llama-3.1-8b-instant"
 
 # Sarvam TTS settings
 TTS_LANGUAGE = "en-IN"
