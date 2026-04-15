@@ -96,7 +96,7 @@ LLM_MODEL = "llama-3.1-8b-instant"
 # Sarvam TTS settings
 TTS_LANGUAGE = "en-IN"
 TTS_MODEL = "bulbul:v3"
-TTS_SPEAKER = "anushka"  # Indian female voice
+TTS_SPEAKER = "simran"  # Indian female voice
 
 # Default transfer number
 DEFAULT_TRANSFER_NUMBER = os.getenv("DEFAULT_TRANSFER_NUMBER")
