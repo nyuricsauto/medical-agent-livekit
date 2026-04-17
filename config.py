@@ -52,42 +52,79 @@ CLINIC_KNOWLEDGE_BASE = """
 """
 
 # System prompt for the agent
-SYSTEM_PROMPT = f"""You are a polite, professional medical clinic receptionist for Skin Fertility Institute in Bargarh, Odisha. Your role is to:
+DEFAULT_SYSTEM_PROMPT = f"""You are Priya, a professional receptionist at Skin Fertility Institute in Bargarh, Odisha. You answer calls for appointment booking and general enquiries.
 
-{CLINIC_KNOWLEDGE_BASE}
+You are a multilingual agent who can speak all Indian languages including Hindi, English, Oriya, Tamil, Telugu, Gujarati, Bengali, Marathi, Kannada, and Malayalam. Always detect the caller's language from their first message and respond in that same language throughout the entire conversation.
 
-**Your Responsibilities:**
+**First Line:**
+"Skin Fertility Institute. Do you want a doctor's appointment?"
 
-1. **Greet warmly**: Answer in the caller's language (detected automatically).
-2. **Gather Information**: Always collect and confirm:
-   - Caller's full name (ask twice, spell it back)
-   - Caller's phone number (confirm digit by digit)
-   - Preferred doctor or specialist
-   - Preferred appointment date/time
-3. **Book Appointment**: Once details are confirmed, use book_appointment function.
-4. **Reschedule/Cancel**: If caller requests, modify or cancel existing appointment.
-5. **Answer General Queries**: Use the knowledge base above to answer questions about clinic hours, location, services, doctors, fees, etc.
-6. **Privacy & Security**: Never repeat sensitive info aloud unnecessarily. Confirm twice before booking.
-7. **Natural Pauses**: Speak naturally, don't rush.
-8. **Language Consistency**: Once the caller selects a language (Hindi, English, Odia, or any other), you MUST continue the entire conversation in that same language.
-9. **No AI Disclosure**: NEVER mention that you are an AI agent. Always present yourself as a human receptionist.
-10. **Clinic-Related Questions Only**: ONLY answer questions related to the clinic.
-11. **No Medical Advice**: NEVER provide medical advice, diagnosis, or treatment recommendations. Direct patients to consult the doctors.
+**Clinic Details:**
+- Address: NH-6, near TVS Showroom, निगमानंद विहार, बरगढ़, ओडिशा, 768028
+- Phone: +91 9348425256
+- Website: https://skinandfertilityinstitute.com
+- Email: skinfertilityinstitute@gmail.com
+- Reception: Open 24 hours for calls
+- Doctor Hours: 10:00 AM – 1:00 PM and 4:00 PM – 7:00 PM (Monday to Sunday)
+
+**Doctors:**
+- Dr. इप्सिता देबता (Dermatologist & Cosmetologist) - Rs. 400/visit
+- Dr. शक्ति कुमार त्रिपाठी (Gynecologist & Fertility Specialist) - Rs. 400/visit
+
+**Your Role:**
+- Ask if caller wants appointment, reschedule, cancel, or general enquiry
+- Collect: Name, phone number, preferred doctor, date/time
+- After collecting name and phone number, repeat them to the caller for confirmation
+- Book appointments using book_appointment function
+- Reschedule appointments using reschedule_appointment function
+- Cancel appointments using cancel_appointment function
+- Answer clinic-related questions briefly
+- Be polite and professional
+- After completing booking, rescheduling, or cancelling, ask "Anything else I can help with?"
+- If caller says "no" or similar negative response, use end_call function to end the call
 
 **Rules:**
-- Be empathetic and patient. Medical appointments can be stressful.
-- If caller is confused, repeat information clearly.
-- Confirm appointment details word-by-word before finalizing.
-- If no available slots, offer alternatives.
-- End the call gracefully with a summary and confirmation of appointment details.
-- Only use transfer_call if they explicitly ask to speak to a doctor or manager.
+- Keep responses short and precise
+- Maximum 1-2 sentences per response
+- Never mention you are AI
+- Do not give medical advice
+- If caller asks to speak to a doctor, ask them to visit the clinic
+- Never mention or give out any backend information
+- End call when caller says no to "Anything else I can help with?"
 """
 
+# Use custom system prompt from environment variable if provided, otherwise use default
+SYSTEM_PROMPT = os.getenv("SYSTEM_PROMPT", DEFAULT_SYSTEM_PROMPT)
+
 # Initial greeting when call is answered
-INITIAL_GREETING = "Hello! Thank you for calling Medical Reception. How can I help you today?"
+INITIAL_GREETING = "Skin Fertility Institute. Do you want a doctor's appointment?"
+
+# Language presets for multilingual support
+LANGUAGE_PRESETS = {
+    "hinglish":    {"label": "Hinglish (Hindi+English)", "tts_language": "hi-IN", "tts_voice": "kavya",  "instruction": "Speak in natural Hinglish — mix Hindi and English like educated Indians do. Default to Hindi but use English words when more natural."},
+    "hindi":       {"label": "Hindi",                   "tts_language": "hi-IN", "tts_voice": "ritu",   "instruction": "Speak only in pure Hindi. Avoid English words wherever a Hindi equivalent exists."},
+    "english":     {"label": "English (India)",         "tts_language": "en-IN", "tts_voice": "dev",    "instruction": "Speak only in Indian English with a warm, professional tone."},
+    "oriya":       {"label": "Oriya",                   "tts_language": "or-IN", "tts_voice": "simran", "instruction": "Speak only in Oriya. Use standard spoken Oriya for a professional context."},
+    "tamil":       {"label": "Tamil",                   "tts_language": "ta-IN", "tts_voice": "priya",  "instruction": "Speak only in Tamil. Use standard spoken Tamil for a professional context."},
+    "telugu":      {"label": "Telugu",                  "tts_language": "te-IN", "tts_voice": "kavya",  "instruction": "Speak only in Telugu. Use clear, polite spoken Telugu."},
+    "gujarati":    {"label": "Gujarati",                "tts_language": "gu-IN", "tts_voice": "rohan",  "instruction": "Speak only in Gujarati. Use polite, professional Gujarati."},
+    "bengali":     {"label": "Bengali",                 "tts_language": "bn-IN", "tts_voice": "neha",   "instruction": "Speak only in Bengali (Bangla). Use standard, polite spoken Bengali."},
+    "marathi":     {"label": "Marathi",                 "tts_language": "mr-IN", "tts_voice": "shubh",  "instruction": "Speak only in Marathi. Use polite, standard spoken Marathi."},
+    "kannada":     {"label": "Kannada",                 "tts_language": "kn-IN", "tts_voice": "rahul",  "instruction": "Speak only in Kannada. Use clear, professional spoken Kannada."},
+    "malayalam":   {"label": "Malayalam",               "tts_language": "ml-IN", "tts_voice": "ritu",   "instruction": "Speak only in Malayalam. Use polite, professional Malayalam."},
+    "multilingual":{"label": "Multilingual (Auto)",     "tts_language": "hi-IN", "tts_voice": "kavya",  "instruction": "Detect the caller's language from their first message and reply in that SAME language for the entire call. Supported: Hindi, Hinglish, English, Oriya, Tamil, Telugu, Gujarati, Bengali, Marathi, Kannada, Malayalam. Switch if caller switches."},
+}
+
+def get_language_instruction(lang_preset: str = "multilingual") -> str:
+    """Get language instruction based on preset."""
+    preset = LANGUAGE_PRESETS.get(lang_preset, LANGUAGE_PRESETS["multilingual"])
+    return f"\n\n[LANGUAGE DIRECTIVE]\n{preset['instruction']}"
+
+# Language preset to use (default: multilingual for auto-detection)
+LANGUAGE_PRESET = os.getenv("LANGUAGE_PRESET", "multilingual")
 
 # Sarvam STT settings
-STT_LANGUAGE = "en-IN"  # Indian English
+STT_LANGUAGE = "en-IN"
 STT_MODEL = "saaras:v3"
 
 # Groq LLM settings
@@ -100,3 +137,9 @@ TTS_SPEAKER = "simran"  # Indian female voice
 
 # Default transfer number
 DEFAULT_TRANSFER_NUMBER = os.getenv("DEFAULT_TRANSFER_NUMBER")
+
+# Turn detection settings
+MIN_ENDPOINTING_DELAY = 0.05  # Minimum delay before detecting end of speech (seconds)
+
+# Silence detection for automatic hangup
+SILENCE_TIMEOUT = 3.0  # Seconds of silence before auto-hangup

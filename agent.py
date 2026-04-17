@@ -1,4 +1,6 @@
 import os
+import time
+import asyncio
 from dotenv import load_dotenv
 from livekit import agents, rtc, api
 from livekit.agents import AgentServer, AgentSession, Agent, room_io
@@ -103,6 +105,22 @@ class AppointmentFunctions(llm.ToolContext):
         else:
             return f"Failed to cancel appointment: {result.get('message')}"
 
+    @llm.function_tool(description="End the call. Use this when the caller says no to 'anything else I can help with' or when the conversation is complete.")
+    async def end_call(self):
+        """
+        End the call by disconnecting the SIP participant.
+        """
+        logger.info("Ending call via end_call function")
+        
+        # Find the SIP participant and disconnect
+        for p in self.ctx.room.remote_participants.values():
+            if p.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:
+                await self.ctx.room.disconnect_participant(p.identity)
+                logger.info(f"Disconnected SIP participant: {p.identity}")
+                return "Call ended. Thank you for calling Skin Fertility Institute."
+        
+        return "Unable to end call - no SIP participant found."
+
 
 class TransferFunctions(llm.ToolContext):
     def __init__(self, ctx: agents.JobContext):
@@ -152,8 +170,13 @@ class InboundAssistant(Agent):
     An AI agent for inbound medical reception calls.
     """
     def __init__(self, session_state: SessionState, tools: list) -> None:
+        # Get language instruction based on preset
+        language_instruction = config.get_language_instruction(config.LANGUAGE_PRESET)
+        # Combine system prompt with language instruction
+        instructions = config.SYSTEM_PROMPT + language_instruction
+        
         super().__init__(
-            instructions=config.SYSTEM_PROMPT,
+            instructions=instructions,
             tools=tools,
         )
         self.session_state = session_state
@@ -175,12 +198,34 @@ async def inbound_agent(ctx: agents.JobContext):
     
     # Combine all tools
     all_tools = list(appt_fnc.function_tools.values()) + list(transfer_fnc.function_tools.values())
+    
+    # Silence detection variables
+    last_speech_time = time.time()
+    silence_check_task = None
+    
+    async def check_silence():
+        """Background task to check for silence and auto-hangup."""
+        nonlocal last_speech_time
+        while True:
+            await asyncio.sleep(1)
+            if time.time() - last_speech_time > config.SILENCE_TIMEOUT:
+                logger.info(f"Silence timeout ({config.SILENCE_TIMEOUT}s) reached, ending call")
+                # Find SIP participant and disconnect
+                for p in ctx.room.remote_participants.values():
+                    if p.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:
+                        await ctx.room.disconnect_participant(p.identity)
+                        logger.info(f"Auto-ended call due to silence: {p.identity}")
+                        return
+                break
 
     # Initialize the Agent Session with plugins
     session = AgentSession(
         stt=sarvam.STT(
             language=config.STT_LANGUAGE,
             model=config.STT_MODEL,
+            mode="translate",
+            flush_signal=True,
+            sample_rate=16000,
         ),
         llm=groq.LLM(
             model=config.LLM_MODEL,
@@ -189,9 +234,20 @@ async def inbound_agent(ctx: agents.JobContext):
             target_language_code=config.TTS_LANGUAGE,
             model=config.TTS_MODEL,
             speaker=config.TTS_SPEAKER,
+            speech_sample_rate=24000,
         ),
         vad=silero.VAD.load(),
+        turn_detection="stt",
+        min_endpointing_delay=config.MIN_ENDPOINTING_DELAY,
+        allow_interruptions=True,
     )
+    
+    # Hook into STT to update last_speech_time when speech is detected
+    @session.on("user_speech_committed")
+    def on_user_speech(msg):
+        nonlocal last_speech_time
+        last_speech_time = time.time()
+        logger.debug(f"User speech detected, updated last_speech_time")
 
     # Start the session
     await session.start(
@@ -210,6 +266,8 @@ async def inbound_agent(ctx: agents.JobContext):
     # Generate initial greeting
     await session.generate_reply(instructions=config.INITIAL_GREETING)
     
+    # Start silence detection task
+    silence_check_task = asyncio.create_task(check_silence())
     logger.info("Agent started and greeting sent")
 
 if __name__ == "__main__":
