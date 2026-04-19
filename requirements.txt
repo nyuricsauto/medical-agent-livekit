@@ -1,4 +1,4 @@
-livekit-agents~=1.4
+livekit-agents~=1.5
 livekit-plugins-sarvam~=1.4
 livekit-plugins-groq~=1.4
 livekit-plugins-silero~=1.4

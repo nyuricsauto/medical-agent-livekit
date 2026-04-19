@@ -186,8 +186,9 @@ server = AgentServer()
 
 @server.rtc_session(agent_name="inbound-assistant")
 async def inbound_agent(ctx: agents.JobContext):
+    await ctx.connect()
     logger.info(f"Connecting to room: {ctx.room.name}")
-    
+
     # Initialize session state
     session_state = SessionState()
     session_state.call_id = ctx.room.name
@@ -202,15 +203,17 @@ async def inbound_agent(ctx: agents.JobContext):
     # Silence detection variables
     last_speech_time = time.time()
     silence_check_task = None
-    
+    silence_enabled = False  # Only start counting after first agent greeting finishes
+
     async def check_silence():
         """Background task to check for silence and auto-hangup."""
-        nonlocal last_speech_time
+        nonlocal last_speech_time, silence_enabled
         while True:
             await asyncio.sleep(1)
+            if not silence_enabled:
+                continue
             if time.time() - last_speech_time > config.SILENCE_TIMEOUT:
                 logger.info(f"Silence timeout ({config.SILENCE_TIMEOUT}s) reached, ending call")
-                # Find SIP participant and disconnect
                 for p in ctx.room.remote_participants.values():
                     if p.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP:
                         await ctx.room.disconnect_participant(p.identity)
@@ -223,7 +226,7 @@ async def inbound_agent(ctx: agents.JobContext):
         stt=sarvam.STT(
             language=config.STT_LANGUAGE,
             model=config.STT_MODEL,
-            mode="translate",
+            mode="transcribe",
             flush_signal=True,
             sample_rate=16000,
         ),
@@ -242,12 +245,20 @@ async def inbound_agent(ctx: agents.JobContext):
         allow_interruptions=True,
     )
     
-    # Hook into STT to update last_speech_time when speech is detected
+    # Reset timer when user speaks
     @session.on("user_speech_committed")
     def on_user_speech(msg):
         nonlocal last_speech_time
         last_speech_time = time.time()
         logger.debug(f"User speech detected, updated last_speech_time")
+
+    # Reset timer after agent finishes speaking; enable silence check after first greeting
+    @session.on("agent_speech_committed")
+    def on_agent_speech(msg):
+        nonlocal last_speech_time, silence_enabled
+        last_speech_time = time.time()
+        silence_enabled = True
+        logger.debug(f"Agent speech committed, silence detection active")
 
     # Start the session
     await session.start(
@@ -255,9 +266,9 @@ async def inbound_agent(ctx: agents.JobContext):
         agent=InboundAssistant(session_state, all_tools),
         room_options=room_io.RoomOptions(
             audio_input=room_io.AudioInputOptions(
-                noise_cancellation=lambda params: 
-                    noise_cancellation.BVCTelephony() 
-                    if params.participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP 
+                noise_cancellation=lambda params:
+                    noise_cancellation.BVCTelephony()
+                    if params.participant.kind == rtc.ParticipantKind.PARTICIPANT_KIND_SIP
                     else noise_cancellation.BVC(),
             ),
         ),
@@ -265,7 +276,7 @@ async def inbound_agent(ctx: agents.JobContext):
 
     # Generate initial greeting
     await session.generate_reply(instructions=config.INITIAL_GREETING)
-    
+
     # Start silence detection task
     silence_check_task = asyncio.create_task(check_silence())
     logger.info("Agent started and greeting sent")

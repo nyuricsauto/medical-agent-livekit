@@ -54,10 +54,7 @@ CLINIC_KNOWLEDGE_BASE = """
 # System prompt for the agent
 DEFAULT_SYSTEM_PROMPT = f"""You are Priya, a professional receptionist at Skin Fertility Institute in Bargarh, Odisha. You answer calls for appointment booking and general enquiries.
 
-You are a multilingual agent who can speak all Indian languages including Hindi, English, Oriya, Tamil, Telugu, Gujarati, Bengali, Marathi, Kannada, and Malayalam. Always detect the caller's language from their first message and respond in that same language throughout the entire conversation.
-
-**First Line:**
-"Skin Fertility Institute. Do you want a doctor's appointment?"
+You are a multilingual agent. Always detect the caller's language from their very first message and respond ONLY in that same language for the entire conversation. Supported languages: Hindi, Hinglish, English, Oriya, Tamil, Telugu, Gujarati, Bengali, Marathi, Kannada, Malayalam. If the caller switches language, switch with them.
 
 **Clinic Details:**
 - Address: NH-6, near TVS Showroom, निगमानंद विहार, बरगढ़, ओडिशा, 768028
@@ -104,7 +101,7 @@ LANGUAGE_PRESETS = {
     "hinglish":    {"label": "Hinglish (Hindi+English)", "tts_language": "hi-IN", "tts_voice": "kavya",  "instruction": "Speak in natural Hinglish — mix Hindi and English like educated Indians do. Default to Hindi but use English words when more natural."},
     "hindi":       {"label": "Hindi",                   "tts_language": "hi-IN", "tts_voice": "ritu",   "instruction": "Speak only in pure Hindi. Avoid English words wherever a Hindi equivalent exists."},
     "english":     {"label": "English (India)",         "tts_language": "en-IN", "tts_voice": "dev",    "instruction": "Speak only in Indian English with a warm, professional tone."},
-    "oriya":       {"label": "Oriya",                   "tts_language": "or-IN", "tts_voice": "simran", "instruction": "Speak only in Oriya. Use standard spoken Oriya for a professional context."},
+    "oriya":       {"label": "Oriya",                   "tts_language": "od-IN", "tts_voice": "simran", "instruction": "Speak only in Oriya. Use standard spoken Oriya for a professional context."},
     "tamil":       {"label": "Tamil",                   "tts_language": "ta-IN", "tts_voice": "priya",  "instruction": "Speak only in Tamil. Use standard spoken Tamil for a professional context."},
     "telugu":      {"label": "Telugu",                  "tts_language": "te-IN", "tts_voice": "kavya",  "instruction": "Speak only in Telugu. Use clear, polite spoken Telugu."},
     "gujarati":    {"label": "Gujarati",                "tts_language": "gu-IN", "tts_voice": "rohan",  "instruction": "Speak only in Gujarati. Use polite, professional Gujarati."},
@@ -124,22 +121,22 @@ def get_language_instruction(lang_preset: str = "multilingual") -> str:
 LANGUAGE_PRESET = os.getenv("LANGUAGE_PRESET", "multilingual")
 
 # Sarvam STT settings
-STT_LANGUAGE = "en-IN"
+STT_LANGUAGE = "hi-IN"
 STT_MODEL = "saaras:v3"
 
 # Groq LLM settings
-LLM_MODEL = "llama-3.1-8b-instant"
+LLM_MODEL = "llama-3.3-70b-versatile"
 
 # Sarvam TTS settings
-TTS_LANGUAGE = "en-IN"
+TTS_LANGUAGE = "hi-IN"
 TTS_MODEL = "bulbul:v3"
-TTS_SPEAKER = "simran"  # Indian female voice
+TTS_SPEAKER = "kavya"  # Hindi/multilingual female voice (matches hi-IN TTS language)
 
 # Default transfer number
 DEFAULT_TRANSFER_NUMBER = os.getenv("DEFAULT_TRANSFER_NUMBER")
 
 # Turn detection settings
-MIN_ENDPOINTING_DELAY = 0.05  # Minimum delay before detecting end of speech (seconds)
+MIN_ENDPOINTING_DELAY = 1.2  # Minimum delay before detecting end of speech (seconds)
 
 # Silence detection for automatic hangup
 SILENCE_TIMEOUT = 3.0  # Seconds of silence before auto-hangup
